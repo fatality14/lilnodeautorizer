@@ -84,6 +84,7 @@ setInterval(function() {
     fs.writeFile('./servers/l4/logins.json', JSON.stringify(logins), callback);
     fs.writeFile('./servers/l4/passwords.json', JSON.stringify(passwords), callback);
     fs.writeFile('./servers/l4/secrets.json', JSON.stringify(secrets), callback);
+    fs.writeFile('./servers/l4/secrets.json', JSON.stringify(banners), callback);
 }, 10000);
 
 function Banner(addr, ref, shows) {
@@ -93,11 +94,18 @@ function Banner(addr, ref, shows) {
     this.clicks = 0;
 }
 
-let banners = [];
+let banners;
+try {
+    banners = JSON.parse(fs.readFileSync('./servers/l4/banners.json'));
+} catch {
+    banners = [];
 
-banners.push(new Banner("banner.jpg", "https://google.com", 10));
-banners.push(new Banner("banner1.jpg", "https://yandex.ru", 3));
-banners.push(new Banner("banner2.jpg", "https://duckduckgo.com", 6));
+    banners.push(new Banner("banner.jpg", "https://google.com", 10));
+    banners.push(new Banner("banner1.jpg", "https://yandex.ru", 3));
+    banners.push(new Banner("banner2.jpg", "https://duckduckgo.com", 6));
+
+    fs.writeFileSync('./servers/l4/banners.json', JSON.stringify(banners));
+}
 
 function connection_foo(ws) {
     let id = Math.random();
