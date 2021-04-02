@@ -56,10 +56,48 @@ function hash_string(s) {
 }
 
 let clients = {};
-let logins = [];
-let passwords = [];
-let secrets = [];
-let baner = { addr: '', ref: '', shows: '' };
+
+let logins, passwords, secrets;
+
+try {
+    logins = JSON.parse(fs.readFileSync('./servers/l4/logins.json'));
+} catch {
+    logins = [];
+}
+
+try {
+    passwords = JSON.parse(fs.readFileSync('./servers/l4/passwords.json'));
+} catch {
+    passwords = [];
+}
+
+try {
+    secrets = JSON.parse(fs.readFileSync('./servers/l4/secrets.json'));
+} catch {
+    secrets = [];
+}
+
+setInterval(function() {
+    function callback(err) {
+        if (err) throw err;
+    }
+    fs.writeFile('./servers/l4/logins.json', JSON.stringify(logins), callback);
+    fs.writeFile('./servers/l4/passwords.json', JSON.stringify(passwords), callback);
+    fs.writeFile('./servers/l4/secrets.json', JSON.stringify(secrets), callback);
+}, 10000);
+
+function Banner(addr, ref, shows) {
+    this.addr = addr;
+    this.ref = ref;
+    this.shows = shows;
+    this.clicks = 0;
+}
+
+let banners = [];
+
+banners.push(new Banner("banner.jpg", "https://google.com", 10));
+banners.push(new Banner("banner1.jpg", "https://yandex.ru", 3));
+banners.push(new Banner("banner2.jpg", "https://duckduckgo.com", 6));
 
 function connection_foo(ws) {
     let id = Math.random();
@@ -67,7 +105,10 @@ function connection_foo(ws) {
     clients[id] = ws;
     console.log("connection: " + id);
 
-    send_JSON_data(clients[id], { 'command': 0, 'id': id });
+    send_JSON_data(clients[id], {
+        'command': 0,
+        'id': id
+    });
 
     function msg_foo(msg) {
         console.log('got message: ' + msg);
@@ -81,14 +122,23 @@ function connection_foo(ws) {
             if (!is_undef(command)) {
                 if (command === 1000) {
                     if (is_in_collection(data.login, logins) || is_empty_str(data.login)) {
-                        send_JSON_data(clients[id], { 'command': 1000, 'code': 1 });
+                        send_JSON_data(clients[id], {
+                            'command': 1000,
+                            'code': 1
+                        });
                     } else if (is_empty_str(data.password)) {
-                        send_JSON_data(clients[id], { 'command': 1000, 'code': 2 });
+                        send_JSON_data(clients[id], {
+                            'command': 1000,
+                            'code': 2
+                        });
                     } else {
                         logins.push(data.login);
                         passwords.push(data.password);
                         secrets.push(hash_string(data.login));
-                        send_JSON_data(clients[id], { 'command': 1000, 'code': 0 });
+                        send_JSON_data(clients[id], {
+                            'command': 1000,
+                            'code': 0
+                        });
                     }
                 }
             }
@@ -101,14 +151,24 @@ function connection_foo(ws) {
                     if (!is_in_collection(data.login, logins) ||
                         is_empty_str(data.login) ||
                         is_empty_str(data.password)) {
-                        send_JSON_data(clients[id], { 'command': 1100, 'code': 1 });
+                        send_JSON_data(clients[id], {
+                            'command': 1100,
+                            'code': 1
+                        });
                     } else {
                         for (let key in logins) {
                             if (logins[key] === data.login) {
                                 if (passwords[key] === data.password) {
-                                    send_JSON_data(clients[id], { 'command': 1100, 'code': 0, 'secret': secrets[key] });
+                                    send_JSON_data(clients[id], {
+                                        'command': 1100,
+                                        'code': 0,
+                                        'secret': secrets[key]
+                                    });
                                 } else {
-                                    send_JSON_data(clients[id], { 'command': 1100, 'code': 1 });
+                                    send_JSON_data(clients[id], {
+                                        'command': 1100,
+                                        'code': 1
+                                    });
                                 }
                             }
                         }
@@ -122,13 +182,20 @@ function connection_foo(ws) {
             if (!is_undef(command)) {
                 if (command === 1200) {
                     if (!is_in_collection(data.secret, secrets)) {
-                        send_JSON_data(clients[id], { 'command': 1200, 'code': 1 });
+                        send_JSON_data(clients[id], {
+                            'command': 1200,
+                            'code': 1
+                        });
                     } else {
                         fs.readFile('./servers/l4/index_main_loaded.html', 'ascii', function(err, data) {
                             if (err) {
                                 return console.log(err);
                             }
-                            send_JSON_data(clients[id], { 'command': 1200, 'code': 0, 'page': data });
+                            send_JSON_data(clients[id], {
+                                'command': 1200,
+                                'code': 0,
+                                'page': data
+                            });
                         });
                     }
                 }
@@ -139,7 +206,16 @@ function connection_foo(ws) {
             let command = data.command;
             if (!is_undef(command)) {
                 if (command === 1300) {
-
+                    send_JSON_data(clients[id], {
+                        'command': 1300,
+                        'code': 0,
+                        'banner': banners[data.banner_counter],
+                        'max': banners.length
+                    });
+                }
+                if (command === 1301) {
+                    ++banners[data.banner_counter].clicks;
+                    console.log(banners[data.banner_counter].clicks);
                 }
             }
         }
